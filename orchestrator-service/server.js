@@ -13,10 +13,17 @@ const io = new Server(server);
 
 app.use(express.json());
 
-// Redis Connection for Distributed Locking (Falls back to memory-store mock if local Redis server unavailable)
+// Optimized Redis Connection Strategy (Suppresses unhandled noise when running in Cloud Fallback Mode)
 const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379', {
     lazyConnect: true,
-    maxRetriesPerRequest: 1
+    maxRetriesPerRequest: null,
+    enableOfflineQueue: false,
+    retryStrategy: () => null // Stop continuous reconnection polling if Redis host is absent
+});
+
+// Quietly handle connection error events in fallback mode
+redis.on('error', () => {
+    // Isolated fallback mode active
 });
 
 const redlock = new Redlock([redis], {
